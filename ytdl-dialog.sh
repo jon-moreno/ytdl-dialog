@@ -1,47 +1,67 @@
+default_IFS=$IFS
 
-pl_end=$(dialog --form "Playlist Stop" 0 0 0 \
-		"Username:" 1 1	"$user" 	1 10 10 0 \
-		3>&1 1>&2 2>&3 3>&- \
+#Receives Password and Index from user
+#Using • as a separator since it is not a common keyboard character
+inputs=$(\
+		zenity --forms \
+		--separator=• \
+		--title="ytdl-dialog" \
+		--text="Enter Parameters" \
+		--add-entry="Playlist Stop Index" \
+		--add-password="YT Account Password" \
 )
-
-#--passwordbox  <text> <height> <width> [<init>]
-pass=$(dialog --passwordbox "Enter YT Account Password" 0 0 \
-	3>&1 1>&2 2>&3 3>&- \
-)
-clear
 
 declare -a preferences
 let x=0
-while read line; do    
+
+#Stores user input in array
+IFS='•' #Changes IFS to parse Zenity output
+for input in $inputs
+do
+	preferences[x]=$input
+	let "x++"
+done
+
+#Stores prefences.txt in an array
+IFS=$default_IFS
+while read line; do
 	preferences[x]=$line
 	let "x++"
 done < preferences.txt
 
-pl_end=10
-user=${preferences[0]} #First line of credentials.txt
-encode=${preferences[1]}
+#Variable Assignment
+pl_end=${preferences[0]}
+user=${preferences[2]}
+pass=${preferences[1]}
+encode=${preferences[3]}
 wl_url="https://www.youtube.com/playlist?list=WL"
 
-#youtube-dl [OPTIONS] URL [URL...]
-youtube-dl -s \
-			--playlist-start 1 \
+#The following command gets the top 1 thru $pl_end videos from WL
+#My WL is sorted by date-added, newest first
+youtube-dl --playlist-start 1 \
 			--playlist-end $pl_end \
 			--mark-watched \
 			-w \
 			--console-title \
 			-f $encode \
+			--recode-video mp4 \
 			-c \
 			-u $user \
-			-p $pass \
+			-p "$pass" \
 			--embed-thumbnail \
+			--restrict-filenames \
+			-o "~/Videos/%(title)s.%(ext)s" \
 			$wl_url \
 
-#youtube-dl --playlist-reverse --max-downloads 10 --mark-watched $WL_URL
+#Switches
 
-#Swithces
-#w = do not overwrite existing files
-#c = continue partial downloads
-#f = format of encode (defined in preferences.txt)
-			#--playlist-reverse
-			#--max-downloads 10
-						#-2 $2FA
+#Single Letter
+  #w = do not overwrite existing files
+  #c = continue partial downloads
+  #f = format of encode (defined in preferences.txt)
+  #o = output template
+
+#For those who have not changed WL sort or have 2FA
+  #--playlist-reverse
+  #--max-downloads 10
+  #-2
